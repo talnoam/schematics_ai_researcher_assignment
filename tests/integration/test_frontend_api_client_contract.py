@@ -23,9 +23,13 @@ ANSWER_BY_FIELD: dict[str, str | bool] = {
 
 
 @pytest.mark.integration
-def test_frontend_api_client_session_flow() -> None:
+def test_frontend_api_client_session_flow(mocker) -> None:
     """Verify frontend client can execute start and answer flow against backend app."""
     test_client = TestClient(app)
+    mocker.patch(
+        "backend.api.routes.generate_conversational_question",
+        new=mocker.AsyncMock(return_value="Could you tell me a bit more?"),
+    )
 
     def request_func(method: str, path: str, payload: dict[str, object] | None) -> dict[str, object]:
         """Route frontend client calls into in-process FastAPI test client."""

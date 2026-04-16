@@ -29,6 +29,7 @@ from backend.data_generation.config import DEFAULT_COHORT_SAMPLING_WEIGHTS
 from backend.data_generation.enums import TargetField
 from backend.data_generation.schemas import CohortBaseProbabilities, CohortDefinition, ProfileFieldValue
 from backend.llm.extractor import extract_fields_from_text
+from backend.llm.generator import generate_conversational_question
 
 router = APIRouter(prefix=SESSIONS_PREFIX, tags=["sessions"])
 _agent = AdaptiveQuestionnaireAgent()
@@ -38,7 +39,7 @@ _cohort_randomizer = random.Random()
 
 
 @router.post("/start", response_model=QuestionnaireResponse)
-def start_session(request: StartSessionRequest) -> QuestionnaireResponse:
+async def start_session(request: StartSessionRequest) -> QuestionnaireResponse:
     """Create a new questionnaire session and return the first action."""
     cohorts = _cohort_loader.load_definitions()
     selected_cohort = _resolve_cohort_definition(
@@ -67,7 +68,7 @@ def start_session(request: StartSessionRequest) -> QuestionnaireResponse:
         cohort_name=selected_cohort.cohort_name,
         action_type=decision.action_type,
     )
-    return _build_questionnaire_response(
+    return await _build_questionnaire_response(
         session_id=session_id,
         profile=decision.updated_profile,
         decision=decision,
@@ -75,7 +76,7 @@ def start_session(request: StartSessionRequest) -> QuestionnaireResponse:
 
 
 @router.post("/{session_id}/answer", response_model=QuestionnaireResponse)
-def answer_question(
+async def answer_question(
     session_id: UUID,
     request: AnswerQuestionRequest,
 ) -> QuestionnaireResponse:
@@ -107,7 +108,7 @@ def answer_question(
         target_field=request.target_field.value,
         action_type=decision.action_type,
     )
-    return _build_questionnaire_response(
+    return await _build_questionnaire_response(
         session_id=session_state.session_id,
         profile=decision.updated_profile,
         decision=decision,
@@ -154,14 +155,14 @@ async def answer_text(
         extracted_count=len(extracted_values),
         action_type=decision.action_type,
     )
-    return _build_questionnaire_response(
+    return await _build_questionnaire_response(
         session_id=session_state.session_id,
         profile=decision.updated_profile,
         decision=decision,
     )
 
 
-def _build_questionnaire_response(
+async def _build_questionnaire_response(
     session_id: UUID,
     profile: PartialUserProfile,
     decision: NextActionDecision,
@@ -169,7 +170,16 @@ def _build_questionnaire_response(
     """Build a consistent API response from a decision and profile state."""
     next_question: QuestionMetadata | None = None
     if decision.action_type == "ask_question" and decision.selected_field is not None:
-        next_question = QUESTION_BANK[decision.selected_field]
+        static_question: QuestionMetadata = QUESTION_BANK[decision.selected_field]
+        conversational_text: str = await generate_conversational_question(
+            target_field=decision.selected_field,
+            profile=profile,
+        )
+        next_question = QuestionMetadata(
+            target_field=static_question.target_field,
+            question_text=conversational_text,
+            friction_cost=static_question.friction_cost,
+        )
     inferred_fields = [
         InferredFieldResponse(
             field_name=inferred_field.field_name,

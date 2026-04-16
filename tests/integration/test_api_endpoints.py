@@ -21,9 +21,13 @@ ANSWER_BY_FIELD: dict[str, str | bool] = {
 
 
 @pytest.mark.integration
-def test_session_start_and_answer_lifecycle() -> None:
+def test_session_start_and_answer_lifecycle(mocker) -> None:
     """Verify session start and answer endpoints work as a sequential flow."""
     client = TestClient(app)
+    mocker.patch(
+        "backend.api.routes.generate_conversational_question",
+        new=mocker.AsyncMock(return_value="Could you share that detail for me?"),
+    )
 
     start_response = client.post("/api/v1/sessions/start", json={})
     assert start_response.status_code == 200
@@ -62,6 +66,10 @@ def test_session_start_and_answer_lifecycle() -> None:
 def test_answer_text_endpoint_updates_profile_from_mocked_extraction(mocker) -> None:
     """Verify text-answer endpoint applies extracted fields into session profile."""
     client = TestClient(app)
+    mocker.patch(
+        "backend.api.routes.generate_conversational_question",
+        new=mocker.AsyncMock(return_value="Could you clarify this detail for me?"),
+    )
     start_response = client.post("/api/v1/sessions/start", json={})
     assert start_response.status_code == 200
     session_id = start_response.json()["session_id"]

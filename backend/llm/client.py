@@ -53,3 +53,45 @@ class OllamaClient:
             response_length=len(completion_text),
         )
         return completion_text
+
+    async def generate_text_completion(self, system_prompt: str, user_prompt: str) -> str:
+        """Generate a plain-text completion from the configured Ollama model.
+
+        Args:
+            system_prompt: High-level model behavior instructions.
+            user_prompt: Request content for the current generation task.
+
+        Returns:
+            Generated plain text from the model.
+        """
+        endpoint_url: str = f"{self.base_url}/v1/chat/completions"
+        # Any is used for dynamic JSON payloads returned by Ollama's API contract.
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "temperature": LLM_TEMPERATURE,
+            "max_tokens": LLM_MAX_TOKENS,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+
+        async with httpx.AsyncClient(timeout=LLM_REQUEST_TIMEOUT_SECONDS) as client:
+            response = await client.post(endpoint_url, json=payload)
+            response.raise_for_status()
+            # Any is used for dynamic JSON payloads returned by Ollama's API contract.
+            response_payload: dict[str, Any] = response.json()
+
+        try:
+            completion_text: str = str(response_payload["choices"][0]["message"]["content"]).strip()
+        except (KeyError, IndexError, TypeError) as error:
+            msg = "Unexpected Ollama response payload structure."
+            raise ValueError(msg) from error
+
+        logger.debug(
+            "Received Ollama text completion",
+            model=self.model,
+            endpoint_url=endpoint_url,
+            response_length=len(completion_text),
+        )
+        return completion_text
