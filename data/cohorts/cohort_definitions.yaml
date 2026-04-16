@@ -1,0 +1,156 @@
+cohorts:
+  - cohort_name: "Tech Veterans"
+    description: "Established professionals with strong earnings and elevated veteran representation."
+    base_probabilities:
+      credit_score_rate:
+        poor: 0.03
+        fair: 0.07
+        good: 0.28
+        very_good: 0.35
+        excellent: 0.27
+      loan_primary_purpose:
+        purchase: 0.35
+        refinance: 0.30
+        home_improvement: 0.10
+        debt_consolidation: 0.08
+        investment: 0.17
+      property_type:
+        single_family: 0.55
+        condo: 0.18
+        townhouse: 0.15
+        multi_family: 0.09
+        mobile_home: 0.03
+      property_use:
+        primary_residence: 0.68
+        second_home: 0.12
+        investment: 0.20
+      annual_income_band:
+        under_50k: 0.05
+        50k_to_100k: 0.20
+        100k_to_200k: 0.45
+        above_200k: 0.30
+      property_value_band:
+        under_300k: 0.08
+        300k_to_600k: 0.34
+        600k_to_1m: 0.36
+        above_1m: 0.22
+      credit_line_band:
+        under_10k: 0.06
+        10k_to_50k: 0.24
+        50k_to_100k: 0.38
+        above_100k: 0.32
+      age_band:
+        under_30: 0.10
+        30_to_44: 0.33
+        45_to_59: 0.37
+        60_plus: 0.20
+      currently_have_mortgage:
+        true: 0.48
+        false: 0.52
+      military_veteran:
+        true: 0.62
+        false: 0.38
+
+  - cohort_name: "Middle-aged Suburban Families"
+    description: "Family-first households in suburban areas with stable mortgage ownership."
+    base_probabilities:
+      credit_score_rate:
+        poor: 0.06
+        fair: 0.18
+        good: 0.39
+        very_good: 0.25
+        excellent: 0.12
+      loan_primary_purpose:
+        purchase: 0.28
+        refinance: 0.34
+        home_improvement: 0.21
+        debt_consolidation: 0.09
+        investment: 0.08
+      property_type:
+        single_family: 0.73
+        condo: 0.08
+        townhouse: 0.12
+        multi_family: 0.05
+        mobile_home: 0.02
+      property_use:
+        primary_residence: 0.84
+        second_home: 0.05
+        investment: 0.11
+      annual_income_band:
+        under_50k: 0.12
+        50k_to_100k: 0.42
+        100k_to_200k: 0.35
+        above_200k: 0.11
+      property_value_band:
+        under_300k: 0.20
+        300k_to_600k: 0.50
+        600k_to_1m: 0.24
+        above_1m: 0.06
+      credit_line_band:
+        under_10k: 0.14
+        10k_to_50k: 0.46
+        50k_to_100k: 0.27
+        above_100k: 0.13
+      age_band:
+        under_30: 0.05
+        30_to_44: 0.38
+        45_to_59: 0.44
+        60_plus: 0.13
+      currently_have_mortgage:
+        true: 0.72
+        false: 0.28
+      military_veteran:
+        true: 0.16
+        false: 0.84
+
+  - cohort_name: "Young Urban Renters"
+    description: "Early-career city residents with lower ownership rates and lighter credit histories."
+    base_probabilities:
+      credit_score_rate:
+        poor: 0.18
+        fair: 0.34
+        good: 0.31
+        very_good: 0.13
+        excellent: 0.04
+      loan_primary_purpose:
+        purchase: 0.20
+        refinance: 0.05
+        home_improvement: 0.12
+        debt_consolidation: 0.39
+        investment: 0.24
+      property_type:
+        single_family: 0.16
+        condo: 0.42
+        townhouse: 0.24
+        multi_family: 0.12
+        mobile_home: 0.06
+      property_use:
+        primary_residence: 0.72
+        second_home: 0.03
+        investment: 0.25
+      annual_income_band:
+        under_50k: 0.36
+        50k_to_100k: 0.42
+        100k_to_200k: 0.18
+        above_200k: 0.04
+      property_value_band:
+        under_300k: 0.46
+        300k_to_600k: 0.36
+        600k_to_1m: 0.14
+        above_1m: 0.04
+      credit_line_band:
+        under_10k: 0.32
+        10k_to_50k: 0.48
+        50k_to_100k: 0.16
+        above_100k: 0.04
+      age_band:
+        under_30: 0.62
+        30_to_44: 0.29
+        45_to_59: 0.07
+        60_plus: 0.02
+      currently_have_mortgage:
+        true: 0.18
+        false: 0.82
+      military_veteran:
+        true: 0.09
+        false: 0.91
