@@ -1,0 +1,47 @@
+---
+description: Run Python via uv and manage dependencies with uv (sync, add, pip)
+alwaysApply: true
+---
+
+# Virtual Environment & Package Management
+
+ALL Python commands must be run with **`uv run`** so they execute in the project environment uv manages. Do not use system Python or ad-hoc virtualenvs outside uv.
+
+## Running Scripts
+
+Invoke Python, modules, and tools through `uv run` from the directory that contains the project’s `pyproject.toml` (or the repo root your team treats as the uv project root):
+
+```bash
+uv run python -m pytest tests/ -v --tb=short
+uv run python main.py
+```
+
+You can also run console-script entry points when defined in the project:
+
+```bash
+uv run pytest tests/ -v --tb=short
+```
+
+## Installing & Syncing Dependencies
+
+When a new dependency is needed:
+
+1. **Pyproject-managed projects** (preferred): add and lock with uv, then sync:
+   ```bash
+   uv add <package>
+   uv sync
+   ```
+2. **Requirements-file workflows**: install into uv’s project environment and refresh the file:
+   ```bash
+   uv pip install -r requirements.txt
+   uv pip install <package>
+   uv pip freeze > requirements.txt
+   ```
+3. Never leave an installed package out of the canonical dependency file (`pyproject.toml` / lockfile or `requirements.txt`, per project convention).
+
+## Rules
+
+- NEVER run `python`, `pip`, or `pytest` directly without `uv run` (or an equivalent uv-managed invocation) unless the user’s task explicitly requires otherwise.
+- Prefer `uv sync` after lockfile or dependency changes; do not create arbitrary new virtual environments by hand.
+- NEVER install packages globally or with `--user` for this project’s dependencies.
+- If the environment is missing or stale, run `uv sync` (or `uv pip install -r requirements.txt` for requirements-only layouts) from the correct project directory instead of improvising a new venv.

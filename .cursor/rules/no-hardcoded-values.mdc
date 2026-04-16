@@ -1,0 +1,36 @@
+---
+description: Keep runtime values in config modules, not implementation scripts
+alwaysApply: true
+---
+
+# No Hardcoded Runtime Values
+
+Do not hardcode runtime-tunable values inside implementation scripts.
+
+## Required Pattern
+
+- Put module-specific values in that module's dedicated config file (for example `bot/config.py`, `collector/config.py`, `scheduler/config.py`).
+- If a module has no config file yet, create one and move the values there.
+- Use root `config.py` only for global/shared variables (environment-backed app-wide settings).
+
+## What Must Move To Config
+
+- Retry attempts, backoff intervals, sleep durations, poll intervals, timeouts.
+- String/number limits, chunk sizes, batching sizes.
+- Prompt text, user-facing constant messages, formatting templates.
+- Default frequencies or other business defaults reused across modules.
+
+## Exceptions
+
+- Literal values that are intrinsic to one-off logic (for example `0`/`1` in local arithmetic) may stay inline.
+- Test-only fixtures may use inline literals inside `tests/`.
+
+## Example
+
+```python
+# bad
+MAX_RETRIES = 3
+
+# good
+from backend.llm.config import MAX_LLM_RETRY_ATTEMPTS
+```

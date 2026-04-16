@@ -1,0 +1,80 @@
+---
+description: Require concise Google-style docstrings on every function and class
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Python Docstrings
+
+Every function and class MUST have a docstring. Keep it short, clear, and production-ready using **Google style**.
+
+## Functions
+
+```python
+def add_subscription(group_id: int, username: str, frequency: int = 180) -> Subscription:
+    """Create a new subscription or reactivate an existing one.
+
+    Args:
+        group_id: Telegram group ID.
+        username: Group's public username.
+        frequency: Notification interval in minutes.
+
+    Returns:
+        The created or reactivated Subscription object.
+    """
+```
+
+## Classes
+
+```python
+class MessageCollector:
+    """Collects and buffers incoming Telegram messages for processing.
+
+    Attributes:
+        buffer_size: Max messages held before auto-flush.
+        group_id: Telegram group this collector is bound to.
+    """
+```
+
+## Rules
+
+- First line: one sentence describing **what** the function/class does (imperative mood).
+- `Args:` section: one line per parameter — name followed by a brief description. Omit `self`/`cls`.
+- `Returns:` section: describe what is returned and its type if not obvious from annotations.
+- `Raises:` section: list exceptions only when the function explicitly raises them.
+- Skip `Args:`/`Returns:` only on trivial functions with zero parameters and no return value.
+- Keep descriptions as short as possible; one line per item is the goal.
+
+## No Types in Docstrings — Use Type Hints Only
+
+**STRICTLY FORBIDDEN:** Do not specify variable types anywhere in docstring text. All typing must be handled exclusively by Python's native Type Hints in the function or class signature.
+
+- Never write type names in `Args:`, `Returns:`, or `Attributes:` entries (e.g., `(int)`, `(str)`, `(List[str])`).
+- Do NOT restate, paraphrase, or abbreviate type hints inside the docstring — the annotations are the single source of truth.
+- If a reviewer or linter flags a missing type, add or fix the **signature annotation**, not the docstring.
+
+```python
+# BAD — type specified in the docstring
+def fetch_papers(query: str, limit: int = 10) -> list[Paper]:
+    """Fetch papers matching a query.
+
+    Args:
+        query (str): Search query string.
+        limit (int): Max results to return.
+
+    Returns:
+        list[Paper]: Matching papers.
+    """
+
+# GOOD — types live only in the signature
+def fetch_papers(query: str, limit: int = 10) -> list[Paper]:
+    """Fetch papers matching a query.
+
+    Args:
+        query: Search query string.
+        limit: Max results to return.
+
+    Returns:
+        Matching papers.
+    """
+```
