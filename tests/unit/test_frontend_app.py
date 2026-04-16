@@ -9,8 +9,11 @@ from backend.api.schemas import QuestionnaireResponse
 from backend.core_logic.deterministic_rules import PartialUserProfile
 from backend.data_generation.enums import PropertyUse, TargetField
 from frontend.app import (
+    SESSION_CHAT_HISTORY_KEY,
+    SESSION_COHORT_KEY,
     coerce_explicit_option,
     get_explicit_options,
+    _initialize_state,
     main,
     split_profile_fields,
 )
@@ -56,3 +59,17 @@ def test_main_calls_render_app(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(frontend_app, "render_app", render_app_mock)
     main()
     render_app_mock.assert_called_once()
+
+
+def test_initialize_state_sets_chat_and_cohort_defaults(monkeypatch: MonkeyPatch) -> None:
+    """Verify chat history and cohort defaults are initialized in session state."""
+    from frontend import app as frontend_app
+
+    fake_session_state: dict[str, object] = {}
+    monkeypatch.setattr(frontend_app.st, "session_state", fake_session_state)
+
+    _initialize_state()
+
+    assert SESSION_CHAT_HISTORY_KEY in fake_session_state
+    assert fake_session_state[SESSION_CHAT_HISTORY_KEY] == []
+    assert fake_session_state[SESSION_COHORT_KEY] == "Automatic (weighted)"
