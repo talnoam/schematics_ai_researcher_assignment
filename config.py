@@ -18,8 +18,8 @@ class AppSettings(BaseSettings):
 
     app_name: str = "Adaptive Questionnaire Agent"
     debug: bool = False
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen3:8b"
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    ollama_model: str = "qwen:9b"
     backend_url: str = "http://localhost:8000"
     data_dir: str = "data"
     random_seed: int = 42

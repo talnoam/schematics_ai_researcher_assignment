@@ -12,23 +12,11 @@ from backend.core_logic.deterministic_rules import (
     DeterministicRulesEngine,
     PartialUserProfile,
 )
+from backend.core_logic.field_mappings import FIELD_NAME_BY_TARGET
 from backend.core_logic.information_math import calculate_expected_information_gain
 from backend.core_logic.question_bank import QUESTION_BANK
 from backend.core_logic.scoring import calculate_question_utility
 from backend.data_generation.enums import TargetField
-
-FIELD_NAME_BY_TARGET: dict[TargetField, str] = {
-    TargetField.CREDIT_SCORE_RATE: "credit_score_rate",
-    TargetField.LOAN_PRIMARY_PURPOSE: "loan_primary_purpose",
-    TargetField.PROPERTY_TYPE: "property_type",
-    TargetField.PROPERTY_USE: "property_use",
-    TargetField.ANNUAL_INCOME_BAND: "annual_income_band",
-    TargetField.PROPERTY_VALUE_BAND: "property_value_band",
-    TargetField.CREDIT_LINE_BAND: "credit_line_band",
-    TargetField.AGE_BAND: "age_band",
-    TargetField.CURRENTLY_HAVE_MORTGAGE: "currently_have_mortgage",
-    TargetField.MILITARY_VETERAN: "military_veteran",
-}
 
 
 class NextActionDecision(BaseModel):

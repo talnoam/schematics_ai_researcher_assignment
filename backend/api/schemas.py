@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.core_logic.deterministic_rules import PartialUserProfile
 from backend.core_logic.question_bank import QuestionMetadata
@@ -24,6 +24,14 @@ class AnswerQuestionRequest(BaseModel):
 
     target_field: TargetField
     answer_value: str | bool
+
+
+class AnswerTextRequest(BaseModel):
+    """Represent payload for submitting free-text questionnaire content."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    user_text: str = Field(min_length=1)
 
 
 class QuestionnaireResponse(BaseModel):

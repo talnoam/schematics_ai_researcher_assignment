@@ -3,53 +3,31 @@
 from __future__ import annotations
 
 import random
-from enum import StrEnum
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
 from backend.api.config import SESSIONS_PREFIX
-from backend.api.schemas import AnswerQuestionRequest, QuestionnaireResponse, StartSessionRequest
+from backend.api.schemas import (
+    AnswerQuestionRequest,
+    AnswerTextRequest,
+    QuestionnaireResponse,
+    StartSessionRequest,
+)
 from backend.api.session_store import InMemorySessionStore, SessionState
 from backend.core_logic.agent import (
-    FIELD_NAME_BY_TARGET,
     AdaptiveQuestionnaireAgent,
     NextActionDecision,
 )
 from backend.core_logic.deterministic_rules import DeterministicRulesEngine, PartialUserProfile
+from backend.core_logic.field_mappings import FIELD_NAME_BY_TARGET, coerce_target_field_value
 from backend.core_logic.question_bank import QUESTION_BANK, QuestionMetadata
 from backend.data_generation.cohort_loader import CohortLoader
 from backend.data_generation.config import DEFAULT_COHORT_SAMPLING_WEIGHTS
-from backend.data_generation.enums import (
-    AgeBand,
-    AnnualIncomeBand,
-    CreditLineBand,
-    CreditScoreRate,
-    LoanPrimaryPurpose,
-    PropertyType,
-    PropertyUse,
-    PropertyValueBand,
-    TargetField,
-)
-from backend.data_generation.schemas import CohortBaseProbabilities
-from backend.data_generation.schemas import CohortDefinition
-from backend.data_generation.schemas import ProfileFieldValue
-
-TARGET_VALUE_ENUM_BY_FIELD: dict[TargetField, type[StrEnum]] = {
-    TargetField.CREDIT_SCORE_RATE: CreditScoreRate,
-    TargetField.LOAN_PRIMARY_PURPOSE: LoanPrimaryPurpose,
-    TargetField.PROPERTY_TYPE: PropertyType,
-    TargetField.PROPERTY_USE: PropertyUse,
-    TargetField.ANNUAL_INCOME_BAND: AnnualIncomeBand,
-    TargetField.PROPERTY_VALUE_BAND: PropertyValueBand,
-    TargetField.CREDIT_LINE_BAND: CreditLineBand,
-    TargetField.AGE_BAND: AgeBand,
-}
-BOOLEAN_TARGET_FIELDS: set[TargetField] = {
-    TargetField.CURRENTLY_HAVE_MORTGAGE,
-    TargetField.MILITARY_VETERAN,
-}
+from backend.data_generation.enums import TargetField
+from backend.data_generation.schemas import CohortBaseProbabilities, CohortDefinition, ProfileFieldValue
+from backend.llm.extractor import extract_fields_from_text
 
 router = APIRouter(prefix=SESSIONS_PREFIX, tags=["sessions"])
 _agent = AdaptiveQuestionnaireAgent()
@@ -138,6 +116,55 @@ def answer_question(
     )
 
 
+@router.post("/{session_id}/answer_text", response_model=QuestionnaireResponse)
+async def answer_text(
+    session_id: UUID,
+    request: AnswerTextRequest,
+) -> QuestionnaireResponse:
+    """Extract structured answers from text and return next questionnaire action."""
+    session_state = _session_store.get_session(session_id)
+    if session_state is None:
+        msg = f"Session not found: {session_id}"
+        raise HTTPException(status_code=404, detail=msg)
+
+    working_profile: PartialUserProfile = session_state.profile.model_copy(deep=True)
+    missing_fields: list[TargetField] = _get_missing_fields(working_profile)
+    extracted_values: dict[TargetField, ProfileFieldValue] = await extract_fields_from_text(
+        user_text=request.user_text,
+        target_fields=missing_fields,
+    )
+
+    for target_field, extracted_value in extracted_values.items():
+        field_name: str = FIELD_NAME_BY_TARGET[target_field]
+        working_profile = working_profile.model_copy(update={field_name: extracted_value})
+        deterministic_result = _deterministic_rules_engine.apply_rules(working_profile)
+        working_profile = deterministic_result.updated_profile
+
+    decision: NextActionDecision = _agent.get_next_action(
+        partial_profile=working_profile,
+        marginal_probabilities=session_state.marginal_probabilities,
+    )
+    _session_store.update_session(
+        SessionState(
+            session_id=session_state.session_id,
+            profile=working_profile,
+            marginal_probabilities=session_state.marginal_probabilities,
+        )
+    )
+
+    logger.info(
+        "Processed text answer for session",
+        session_id=str(session_id),
+        extracted_count=len(extracted_values),
+        action_type=decision.action_type,
+    )
+    return _build_questionnaire_response(
+        session_id=session_state.session_id,
+        profile=working_profile,
+        decision=decision,
+    )
+
+
 def _build_questionnaire_response(
     session_id: UUID,
     profile: PartialUserProfile,
@@ -195,18 +222,17 @@ def _to_marginal_probabilities(
 
 def _coerce_answer_value(target_field: TargetField, raw_value: str | bool) -> ProfileFieldValue:
     """Coerce answer payload value to the expected typed field value."""
-    if target_field in BOOLEAN_TARGET_FIELDS:
-        if not isinstance(raw_value, bool):
-            msg = f"Answer for '{target_field.value}' must be boolean."
-            raise HTTPException(status_code=422, detail=msg)
-        return raw_value
-
-    expected_type: type[StrEnum] = TARGET_VALUE_ENUM_BY_FIELD[target_field]
-    if not isinstance(raw_value, str):
-        msg = f"Answer for '{target_field.value}' must be a string enum value."
-        raise HTTPException(status_code=422, detail=msg)
     try:
-        return expected_type(raw_value)
+        return coerce_target_field_value(target_field, raw_value)
     except ValueError as error:
-        msg = f"Invalid value '{raw_value}' for field '{target_field.value}'."
+        msg = str(error)
         raise HTTPException(status_code=422, detail=msg) from error
+
+
+def _get_missing_fields(profile: PartialUserProfile) -> list[TargetField]:
+    """Return missing fields for extraction based on current profile state."""
+    return [
+        target_field
+        for target_field, field_name in FIELD_NAME_BY_TARGET.items()
+        if getattr(profile, field_name) is None
+    ]

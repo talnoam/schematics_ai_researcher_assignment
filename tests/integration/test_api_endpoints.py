@@ -3,6 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.data_generation.enums import PropertyUse, TargetField
 from backend.main import app
 
 ANSWER_BY_FIELD: dict[str, str | bool] = {
@@ -50,3 +51,27 @@ def test_session_start_and_answer_lifecycle() -> None:
     answer_payload = answer_response.json()
     assert answer_payload["session_id"] == start_payload["session_id"]
     assert "current_profile" in answer_payload
+
+
+@pytest.mark.integration
+def test_answer_text_endpoint_updates_profile_from_mocked_extraction(mocker) -> None:
+    """Verify text-answer endpoint applies extracted fields into session profile."""
+    client = TestClient(app)
+    start_response = client.post("/api/v1/sessions/start", json={})
+    assert start_response.status_code == 200
+    session_id = start_response.json()["session_id"]
+
+    mocker.patch(
+        "backend.api.routes.extract_fields_from_text",
+        new=mocker.AsyncMock(
+            return_value={TargetField.PROPERTY_USE: PropertyUse.INVESTMENT}
+        ),
+    )
+    answer_text_response = client.post(
+        f"/api/v1/sessions/{session_id}/answer_text",
+        json={"user_text": "This is an investment property."},
+    )
+
+    assert answer_text_response.status_code == 200
+    payload = answer_text_response.json()
+    assert payload["current_profile"]["property_use"] == PropertyUse.INVESTMENT.value
