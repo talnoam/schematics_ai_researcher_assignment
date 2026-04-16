@@ -34,6 +34,17 @@ class AnswerTextRequest(BaseModel):
     user_text: str = Field(min_length=1)
 
 
+class InferredFieldResponse(BaseModel):
+    """Represent one inferred-field item serialized through the API."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field_name: TargetField
+    inferred_value: str | bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    inference_reason: str = Field(min_length=1)
+
+
 class QuestionnaireResponse(BaseModel):
     """Represent API state returned after start or answer operations."""
 
@@ -43,3 +54,4 @@ class QuestionnaireResponse(BaseModel):
     is_complete: bool
     next_question: QuestionMetadata | None
     current_profile: PartialUserProfile
+    inferred_fields: list[InferredFieldResponse] = Field(default_factory=list)

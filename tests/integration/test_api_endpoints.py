@@ -31,6 +31,11 @@ def test_session_start_and_answer_lifecycle() -> None:
     assert start_payload["session_id"]
     assert "current_profile" in start_payload
     assert "is_complete" in start_payload
+    assert "inferred_fields" in start_payload
+    assert any(
+        inferred_field["field_name"] == TargetField.ZIPCODE.value
+        for inferred_field in start_payload["inferred_fields"]
+    )
 
     if start_payload["is_complete"]:
         return

@@ -66,4 +66,9 @@ QUESTION_BANK: dict[TargetField, QuestionMetadata] = {
         question_text="Have you served in the military as a veteran?",
         friction_cost=0.41,
     ),
+    TargetField.ZIPCODE: QuestionMetadata(
+        target_field=TargetField.ZIPCODE,
+        question_text="What is your current 5-digit zipcode?",
+        friction_cost=0.15,
+    ),
 }

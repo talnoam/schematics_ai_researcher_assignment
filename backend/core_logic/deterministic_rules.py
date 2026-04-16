@@ -35,6 +35,7 @@ class PartialUserProfile(BaseModel):
     age_band: AgeBand | None = None
     currently_have_mortgage: bool | None = None
     military_veteran: bool | None = None
+    zipcode: str | None = None
 
 
 class DeterministicRuleResult(BaseModel):

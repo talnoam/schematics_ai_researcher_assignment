@@ -31,6 +31,7 @@ ProfileFieldValue: TypeAlias = (
     | CreditLineBand
     | AgeBand
     | bool
+    | str
 )
 
 

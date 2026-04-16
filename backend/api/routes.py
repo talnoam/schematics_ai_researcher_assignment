@@ -8,10 +8,11 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from backend.api.config import SESSIONS_PREFIX
+from backend.api.config import COHORT_ZIPCODE_PRIORS, SESSIONS_PREFIX
 from backend.api.schemas import (
     AnswerQuestionRequest,
     AnswerTextRequest,
+    InferredFieldResponse,
     QuestionnaireResponse,
     StartSessionRequest,
 )
@@ -20,7 +21,7 @@ from backend.core_logic.agent import (
     AdaptiveQuestionnaireAgent,
     NextActionDecision,
 )
-from backend.core_logic.deterministic_rules import DeterministicRulesEngine, PartialUserProfile
+from backend.core_logic.deterministic_rules import PartialUserProfile
 from backend.core_logic.field_mappings import FIELD_NAME_BY_TARGET, coerce_target_field_value
 from backend.core_logic.question_bank import QUESTION_BANK, QuestionMetadata
 from backend.data_generation.cohort_loader import CohortLoader
@@ -31,7 +32,6 @@ from backend.llm.extractor import extract_fields_from_text
 
 router = APIRouter(prefix=SESSIONS_PREFIX, tags=["sessions"])
 _agent = AdaptiveQuestionnaireAgent()
-_deterministic_rules_engine = DeterministicRulesEngine()
 _cohort_loader = CohortLoader()
 _session_store = InMemorySessionStore()
 _cohort_randomizer = random.Random()
@@ -45,18 +45,18 @@ def start_session(request: StartSessionRequest) -> QuestionnaireResponse:
         available_cohorts=cohorts,
         requested_cohort_name=request.cohort_name,
     )
-    marginal_probabilities = _to_marginal_probabilities(selected_cohort.base_probabilities)
+    marginal_probabilities = _to_marginal_probabilities(
+        selected_cohort.base_probabilities,
+        selected_cohort.cohort_name,
+    )
     session_id: UUID = uuid4()
 
-    profile = PartialUserProfile()
-    deterministic_result = _deterministic_rules_engine.apply_rules(profile)
-    resolved_profile = deterministic_result.updated_profile
-    decision: NextActionDecision = _agent.get_next_action(resolved_profile, marginal_probabilities)
+    decision: NextActionDecision = _agent.get_next_action(PartialUserProfile(), marginal_probabilities)
 
     _session_store.create_session(
         SessionState(
             session_id=session_id,
-            profile=resolved_profile,
+            profile=decision.updated_profile,
             marginal_probabilities=marginal_probabilities,
         )
     )
@@ -69,7 +69,7 @@ def start_session(request: StartSessionRequest) -> QuestionnaireResponse:
     )
     return _build_questionnaire_response(
         session_id=session_id,
-        profile=resolved_profile,
+        profile=decision.updated_profile,
         decision=decision,
     )
 
@@ -89,17 +89,15 @@ def answer_question(
     coerced_value = _coerce_answer_value(request.target_field, request.answer_value)
     updated_profile = session_state.profile.model_copy(update={field_name: coerced_value})
 
-    deterministic_result = _deterministic_rules_engine.apply_rules(updated_profile)
-    resolved_profile = deterministic_result.updated_profile
     decision: NextActionDecision = _agent.get_next_action(
-        partial_profile=resolved_profile,
+        partial_profile=updated_profile,
         marginal_probabilities=session_state.marginal_probabilities,
     )
 
     _session_store.update_session(
         SessionState(
             session_id=session_state.session_id,
-            profile=resolved_profile,
+            profile=decision.updated_profile,
             marginal_probabilities=session_state.marginal_probabilities,
         )
     )
@@ -111,7 +109,7 @@ def answer_question(
     )
     return _build_questionnaire_response(
         session_id=session_state.session_id,
-        profile=resolved_profile,
+        profile=decision.updated_profile,
         decision=decision,
     )
 
@@ -137,8 +135,6 @@ async def answer_text(
     for target_field, extracted_value in extracted_values.items():
         field_name: str = FIELD_NAME_BY_TARGET[target_field]
         working_profile = working_profile.model_copy(update={field_name: extracted_value})
-        deterministic_result = _deterministic_rules_engine.apply_rules(working_profile)
-        working_profile = deterministic_result.updated_profile
 
     decision: NextActionDecision = _agent.get_next_action(
         partial_profile=working_profile,
@@ -147,7 +143,7 @@ async def answer_text(
     _session_store.update_session(
         SessionState(
             session_id=session_state.session_id,
-            profile=working_profile,
+            profile=decision.updated_profile,
             marginal_probabilities=session_state.marginal_probabilities,
         )
     )
@@ -160,7 +156,7 @@ async def answer_text(
     )
     return _build_questionnaire_response(
         session_id=session_state.session_id,
-        profile=working_profile,
+        profile=decision.updated_profile,
         decision=decision,
     )
 
@@ -174,11 +170,21 @@ def _build_questionnaire_response(
     next_question: QuestionMetadata | None = None
     if decision.action_type == "ask_question" and decision.selected_field is not None:
         next_question = QUESTION_BANK[decision.selected_field]
+    inferred_fields = [
+        InferredFieldResponse(
+            field_name=inferred_field.field_name,
+            inferred_value=inferred_field.inferred_value,
+            confidence=inferred_field.confidence,
+            inference_reason=inferred_field.inference_reason,
+        )
+        for inferred_field in decision.inferred_fields
+    ]
     return QuestionnaireResponse(
         session_id=session_id,
         is_complete=decision.action_type == "stop_and_infer",
         next_question=next_question,
         current_profile=profile,
+        inferred_fields=inferred_fields,
     )
 
 
@@ -203,9 +209,11 @@ def _resolve_cohort_definition(
 
 def _to_marginal_probabilities(
     base_probabilities: CohortBaseProbabilities,
+    cohort_name: str,
 ) -> dict[TargetField, dict[str, float]]:
     """Convert cohort base probabilities to target-field keyed marginals."""
     serialized_probabilities: dict[str, dict[str, float]] = base_probabilities.model_dump(mode="json")
+    zipcode_priors: dict[str, float] = COHORT_ZIPCODE_PRIORS.get(cohort_name, {})
     return {
         TargetField.CREDIT_SCORE_RATE: serialized_probabilities["credit_score_rate"],
         TargetField.LOAN_PRIMARY_PURPOSE: serialized_probabilities["loan_primary_purpose"],
@@ -217,6 +225,7 @@ def _to_marginal_probabilities(
         TargetField.AGE_BAND: serialized_probabilities["age_band"],
         TargetField.CURRENTLY_HAVE_MORTGAGE: serialized_probabilities["currently_have_mortgage"],
         TargetField.MILITARY_VETERAN: serialized_probabilities["military_veteran"],
+        TargetField.ZIPCODE: zipcode_priors,
     }
 
 

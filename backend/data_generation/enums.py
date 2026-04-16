@@ -90,3 +90,4 @@ class TargetField(StrEnum):
     AGE_BAND = "age_band"
     CURRENTLY_HAVE_MORTGAGE = "currently_have_mortgage"
     MILITARY_VETERAN = "military_veteran"
+    ZIPCODE = "zipcode"

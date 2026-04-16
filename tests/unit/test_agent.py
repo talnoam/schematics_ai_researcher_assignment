@@ -28,6 +28,7 @@ def _build_profile_with_known_values() -> PartialUserProfile:
         age_band=AgeBand.FROM_45_TO_59,
         currently_have_mortgage=True,
         military_veteran=False,
+        zipcode="94027",
     )
 
 
@@ -90,3 +91,36 @@ def test_get_next_action_runs_deterministic_rule_before_scoring() -> None:
 
     assert decision.action_type == "stop_and_infer"
     assert decision.selected_field is None
+
+
+def test_get_next_action_auto_infers_field_when_marginal_probability_is_high() -> None:
+    """Verify a strong cohort prior auto-infers a missing field without asking."""
+    agent = AdaptiveQuestionnaireAgent()
+    profile = _build_profile_with_known_values().model_copy(update={"zipcode": None})
+    marginal_probabilities: dict[TargetField, dict[str, float]] = {
+        TargetField.ZIPCODE: {"94027": 0.9, "90210": 0.1},
+    }
+
+    decision = agent.get_next_action(profile, marginal_probabilities=marginal_probabilities)
+
+    assert decision.action_type == "stop_and_infer"
+    assert decision.selected_field is None
+    assert decision.updated_profile.zipcode == "94027"
+    assert len(decision.inferred_fields) == 1
+    assert decision.inferred_fields[0].field_name == TargetField.ZIPCODE
+    assert decision.inferred_fields[0].inferred_value == "94027"
+
+
+def test_get_next_action_uses_utility_scoring_when_marginal_probability_is_low() -> None:
+    """Verify low-confidence priors do not auto-infer and still trigger scoring."""
+    agent = AdaptiveQuestionnaireAgent()
+    profile = _build_profile_with_known_values().model_copy(update={"zipcode": None})
+    marginal_probabilities: dict[TargetField, dict[str, float]] = {
+        TargetField.ZIPCODE: {"94027": 0.6, "90210": 0.4},
+    }
+
+    decision = agent.get_next_action(profile, marginal_probabilities=marginal_probabilities)
+
+    assert decision.action_type == "ask_question"
+    assert decision.selected_field == TargetField.ZIPCODE
+    assert decision.updated_profile.zipcode is None
