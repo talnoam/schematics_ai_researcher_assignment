@@ -127,3 +127,15 @@ class CohortCatalog(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     cohorts: list[CohortDefinition] = Field(min_length=1)
+
+
+class GeneratedUserRecord(BaseModel):
+    """Represent one generated user row with profile, cohort, and latent metadata."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    cohort_name: str = Field(min_length=1)
+    zipcode: str = Field(min_length=1)
+    affluence_score: Probability
+    risk_profile: Probability
+    user_profile: UserProfile

@@ -57,3 +57,19 @@ def load_cohort_definitions(file_path: Path | None = None) -> list[CohortDefinit
     """Load and return the list of validated cohort definitions."""
     catalog: CohortCatalog = load_cohort_catalog(file_path=file_path)
     return catalog.cohorts
+
+
+class CohortLoader:
+    """Load cohort definitions from a configured path."""
+
+    def __init__(self, file_path: Path | None = None) -> None:
+        """Initialize the cohort loader with an optional YAML path override."""
+        self.file_path: Path | None = file_path
+
+    def load_catalog(self) -> CohortCatalog:
+        """Load and validate the full cohort catalog."""
+        return load_cohort_catalog(file_path=self.file_path)
+
+    def load_definitions(self) -> list[CohortDefinition]:
+        """Load and validate cohort definitions as a list."""
+        return load_cohort_definitions(file_path=self.file_path)
