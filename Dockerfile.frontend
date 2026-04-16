@@ -5,6 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 COPY pyproject.toml uv.lock README.md /app/
+COPY backend /app/backend
 COPY frontend /app/frontend
 COPY config.py /app/config.py
 
