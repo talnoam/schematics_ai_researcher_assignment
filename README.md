@@ -143,6 +143,20 @@ Validate generated statistics:
 uv run python scripts/validate_statistics.py
 ```
 
+## Data Validation & Analytics Dashboard
+
+Run the dashboard generation script:
+
+```bash
+uv run python scripts/validate_statistics.py
+```
+
+Interactive HTML output:
+
+- `data/visualizations/cohort_feature_distributions_dashboard.html`
+
+This dashboard is designed to visually validate the Latent Factor + Softmax data-generation pipeline. It shows distinct, cohort-normalized probability distributions (0-100%) across the Facebook campaign cohorts, making it easy to verify that each cohort exhibits logical, differentiated behavior.
+
 ## API Endpoints (Backend)
 
 - `GET /health`
