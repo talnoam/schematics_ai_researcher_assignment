@@ -21,6 +21,7 @@ ENV/
 
 data/raw/*
 data/generated/*
+data/visualizations/*
 !data/raw/.gitkeep
 !data/generated/.gitkeep
 

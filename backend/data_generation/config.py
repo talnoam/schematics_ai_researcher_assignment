@@ -38,3 +38,9 @@ DEFAULT_MOCK_USER_COUNT: int = 5000
 DEFAULT_MOCK_USERS_OUTPUT_PATH: Path = Path("data/generated/mock_users.csv")
 DEFAULT_INCOME_BY_COHORT_PLOT_PATH: Path = Path("data/generated/income_by_cohort.html")
 DEFAULT_INCOME_BY_COHORT_STACKED_PLOT_PATH: Path = Path("data/generated/income_by_cohort_stacked.html")
+DEFAULT_VISUALIZATIONS_DIR: Path = Path("data/visualizations")
+DEFAULT_COHORT_FEATURE_DISTRIBUTIONS_DASHBOARD_PATH: Path = (
+    DEFAULT_VISUALIZATIONS_DIR / "cohort_feature_distributions_dashboard.html"
+)
+VISUALIZATION_SUBPLOT_COLUMNS: int = 2
+EXCLUDED_FEATURE_COLUMN_KEYWORDS: tuple[str, ...] = ("id", "token", "session")
