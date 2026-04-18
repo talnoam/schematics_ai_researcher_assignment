@@ -46,6 +46,7 @@ async def extract_fields_from_text(
         system_prompt=_SYSTEM_PROMPT,
         user_prompt=user_prompt,
     )
+    logger.info(f"Raw LLM Extraction Payload: {raw_completion}")
     return _parse_and_coerce_extraction(raw_completion, target_fields)
 
 
